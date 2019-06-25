@@ -30,7 +30,8 @@ INSTALLED_APPS = [
     'django_filters',
     'django_extensions',
 
-    'apps.users'
+    'apps.users',
+    'apps.invoices'
 
 ]
 

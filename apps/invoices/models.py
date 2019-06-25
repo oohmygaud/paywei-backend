@@ -16,7 +16,7 @@ def makeKey():
 class Invoice(model_base.NicknamedBase):
     objects = models.Manager()
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,
-                             related_name='api_keys')
+                             related_name='invoices')
     recipient_email = models.CharField(max_length=64, null=True, blank=True)
     payee = models.CharField(max_length=64, null=True, blank=True)
     key = models.CharField(max_length=32, default=makeKey)
