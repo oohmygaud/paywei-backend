@@ -18,5 +18,6 @@ django-filter
 django-rest-registration
 django-jet
 django-cors-headers
+django-choices
 djangorestframework_simplejwt
 uwsgi
