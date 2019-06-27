@@ -36,6 +36,17 @@ class NicknamedBase(CutePKBase):
     class Meta:
         abstract = True
 
+class TitledBase(CutePKBase):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    title = models.CharField(max_length=255, null=True, blank=True)
+    
+    def __str__(self):
+        return self.title or "no_title"
+
+    class Meta:
+        abstract = True
+
 
 class OwnedBase(models.Model):
     user = models.ForeignKey('auth.user', on_delete=models.DO_NOTHING)

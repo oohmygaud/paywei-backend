@@ -14,7 +14,7 @@ from djchoices import ChoiceItem, DjangoChoices
 def makeKey():
     return str(uuid4()).replace('-', '')[:16].upper()
 
-class Invoice(model_base.NicknamedBase):
+class Invoice(model_base.TitledBase):
 
     class InvoiceStatus(DjangoChoices):
         new = ChoiceItem('new', 'New')
@@ -31,7 +31,7 @@ class Invoice(model_base.NicknamedBase):
     payee = models.CharField(max_length=64, null=True, blank=True)
     key = models.CharField(max_length=32, default=makeKey)
     archived_at = models.DateTimeField(null=True, blank=True)
-    description = models.CharField(max_length=512, null=True, blank=True)
+    notes = models.CharField(max_length=512, null=True, blank=True)
     due_date = models.DateTimeField(null=True, blank=True)
     total_wei_due = models.DecimalField(max_digits=50, decimal_places=0)
     min_payment_threshold = models.PositiveIntegerField(blank=True, default=100, validators=[MaxValueValidator(100),])
