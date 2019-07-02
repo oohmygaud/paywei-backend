@@ -10,6 +10,7 @@ from django.core.mail import send_mail, mail_admins
 from apps import model_base
 from django.core.validators import MaxValueValidator
 from djchoices import ChoiceItem, DjangoChoices
+from django.core.mail import send_mail, mail_admins
 
 
 def makeKey():
@@ -23,12 +24,19 @@ class Invoice(model_base.TitledBase):
         published = ChoiceItem('published', 'Published')
         partial_payment = ChoiceItem('partial_payment', 'Partial Payment')
         paid_in_full = ChoiceItem('paid_in_full', 'Paid in Full')
+    
+    class DeliveryChoices(DjangoChoices):
+        email = ChoiceItem('email', 'Email')
+        link = ChoiceItem('link', 'Link')
+        
 
     objects = models.Manager()
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,
                              related_name='invoices')
     status = models.CharField(
         max_length=32, default='new', choices=InvoiceStatus.choices)
+    delivery = models.CharField(
+        max_length=32, default='email', choices=DeliveryChoices.choices)
     recipient_email = models.CharField(max_length=64, null=True, blank=True)
     payee = models.CharField(max_length=64, null=True, blank=True)
     key = models.CharField(max_length=32, default=makeKey)
@@ -38,6 +46,20 @@ class Invoice(model_base.TitledBase):
     total_wei_due = models.DecimalField(max_digits=50, decimal_places=0)
     min_payment_threshold = models.PositiveIntegerField(
         blank=True, default=100, validators=[MaxValueValidator(100), ])
+
+    def save(self, *args, **kwargs):
+        super(Invoice, self).save(*args, **kwargs)
+        mail_admins(
+            'New Invoice Created',
+            'A new invoice was created on PayWei'
+        )
+        if(self.delivery == 'email'):
+            send_mail(
+                'Someone has sent you a bill on PayWei',
+                'paywei.co/pay/' + self.id,
+                'noreply@paywei.co',
+                [self.recipient_email]
+            )
 
     class Meta:
         ordering = ('-created_at',)
