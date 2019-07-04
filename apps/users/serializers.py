@@ -1,4 +1,4 @@
-from .models import CustomUser as User, APIKey
+from .models import CustomUser as User, APIKey, WhitelistAddress
 from rest_framework import serializers
 import re
 from rest_registration.api.serializers import DefaultRegisterUserSerializer
@@ -28,3 +28,16 @@ class APIKeySerializer(serializers.ModelSerializer):
         model = APIKey
         fields = ('__all__')
         read_only = ('key',)
+
+class WhitelistAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WhitelistAddress
+        fields = ('__all__')
+
+    def update(self, instance, validated_data):
+        for field in ['address', 'created_at', 'updated_at', 'revoked_at', 'user', 'status']:
+            if field in validated_data:
+                raise serializers.ValidationError({
+                    field: 'You must not change this field'
+                })
+        return super().update(instance, validated_data)

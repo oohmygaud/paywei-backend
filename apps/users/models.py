@@ -7,7 +7,7 @@ from .. import model_base
 from django.utils import timezone
 from datetime import timedelta
 from django.core.mail import send_mail, mail_admins
-
+from djchoices import ChoiceItem, DjangoChoices
 
 
 class CustomUser(AbstractUser):
@@ -30,8 +30,8 @@ def makeKey():
 
 class APIKey(model_base.RandomPKBase):
     objects = models.Manager()
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,
-                             related_name='api_keys')
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name='api_keys')
     key = models.CharField(max_length=32, default=makeKey)
     archived_at = models.DateTimeField(null=True, blank=True)
     nickname = models.CharField(max_length=64)
@@ -39,5 +39,27 @@ class APIKey(model_base.RandomPKBase):
 
     class Meta:
         ordering = ('-created_at',)
+
+class WhitelistAddress(model_base.RandomPKBase):
+
+    class AddressStatus(DjangoChoices):
+        pending = ChoiceItem('pending', 'Pending')
+        waiting = ChoiceItem('waiting', 'Waiting')
+        verified = ChoiceItem('verified', 'Verified')
+        denied = ChoiceItem('denied', 'Denied')
+
+    objects = models.Manager()
+    nickname = models.CharField(max_length=64)
+    address = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name='addresses')
+    status = models.CharField(
+        max_length=32, default='pending', choices=AddressStatus.choices)
+
+    
+
 
     

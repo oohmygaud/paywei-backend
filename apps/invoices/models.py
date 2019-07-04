@@ -31,14 +31,15 @@ class Invoice(model_base.TitledBase):
         
 
     objects = models.Manager()
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,
-                             related_name='invoices')
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name='invoices')
     status = models.CharField(
         max_length=32, default='new', choices=InvoiceStatus.choices)
     delivery = models.CharField(
         max_length=32, default='email', choices=DeliveryChoices.choices)
     recipient_email = models.CharField(max_length=64, null=True, blank=True)
-    payee = models.CharField(max_length=64, null=True, blank=True)
+    pay_to = models.ForeignKey(
+        'users.WhitelistAddress', on_delete=models.DO_NOTHING, related_name='pay_to')
     key = models.CharField(max_length=32, default=makeKey)
     archived_at = models.DateTimeField(null=True, blank=True)
     notes = models.CharField(max_length=512, null=True, blank=True)
@@ -89,3 +90,5 @@ class Payment(model_base.RandomPKBase):
             return json.loads(self.parameters_json)
         except:
             return {}
+
+    
