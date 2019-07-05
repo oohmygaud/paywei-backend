@@ -41,6 +41,7 @@ REST_REGISTRATION = {
     'RESET_PASSWORD_VERIFICATION_URL': 'https://paywei.co/reset-password/',
     'REGISTER_EMAIL_VERIFICATION_URL': 'https://paywei.co/verify-email/',
     'VERIFICATION_FROM_EMAIL': 'noreply@paywei.co',
+    'PROFILE_SERIALIZER_CLASS': 'apps.users.serializers.UserProfileSerializer',
     'USER_EDITABLE_FIELDS': ['email', 'username', 'first_name', 'last_name',]
 }
 
