@@ -44,13 +44,14 @@ class WhitelistAddress(model_base.RandomPKBase):
 
     class AddressStatus(DjangoChoices):
         pending = ChoiceItem('pending', 'Pending')
-        waiting = ChoiceItem('waiting', 'Waiting')
         verified = ChoiceItem('verified', 'Verified')
         denied = ChoiceItem('denied', 'Denied')
+        deactivated = ChoiceItem('deactivated', 'Deactivated')
 
     objects = models.Manager()
     nickname = models.CharField(max_length=64)
     address = models.CharField(max_length=64)
+    secret = models.CharField(max_length=32, default=makeKey)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
@@ -58,6 +59,17 @@ class WhitelistAddress(model_base.RandomPKBase):
         CustomUser, on_delete=models.CASCADE, related_name='addresses')
     status = models.CharField(
         max_length=32, default='pending', choices=AddressStatus.choices)
+
+    def save(self, *args, **kwargs):
+        _new = bool(getattr(self, 'pk', None))
+        super(WhitelistAddress, self).save(*args, **kwargs)
+        if (self.status == 'pending' and _new):
+            send_mail(
+                    'An address is pending verification on PayWei',
+                    "Click here to verify: https://paywei.co/verify_address/%s/%s"%(self.id, self.secret),
+                    'noreply@paywei.co',
+                    [self.user.email]
+                )
 
     
 

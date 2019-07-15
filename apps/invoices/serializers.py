@@ -15,8 +15,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data['pay_to'].user != data['user']:
             raise serializers.ValidationError({'pay_to': 'This address does not belong to you'})
-            
+        if self.instance and self.instance.status == 'agreed':
+            raise serializers.ValidationError({ '_': 'This invoice has already been agreed upon'})
         return data
+
+    
 
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:

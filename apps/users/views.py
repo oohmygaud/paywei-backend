@@ -12,6 +12,8 @@ from .models import CustomUser as User, APIKey, WhitelistAddress
 from rest_framework import viewsets
 from .permissions import IsOwner
 from django.utils import timezone
+from rest_framework.decorators import action
+from django_filters import rest_framework as filters
 
 
 # Create your views here.
@@ -42,6 +44,8 @@ class WhitelistAddressViewSet(viewsets.ModelViewSet):
     model = WhitelistAddress
     permission_classes = (IsOwner,)
     serializer_class = WhitelistAddressSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_fields = ('status',)
 
     def get(self, request, format=None):
         if not self.request.user.is_authenticated:
@@ -51,3 +55,13 @@ class WhitelistAddressViewSet(viewsets.ModelViewSet):
         if not self.request.user.is_authenticated:
             return WhitelistAddress.objects.none()
         return WhitelistAddress.objects.filter(user=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def verify(self, request, pk=None):
+        instance = self.get_object()
+        yesterday = timezone.now() - timedelta(days=1)
+        if self.request.data['secret'] != instance.secret or instance.created_at < yesterday:
+            return Response({'error': 'unable to verify this address'})
+        instance.status = 'verified'
+        instance.save()
+        return Response(self.serializer_class(instance).data)

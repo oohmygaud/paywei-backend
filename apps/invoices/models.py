@@ -22,6 +22,7 @@ class Invoice(model_base.TitledBase):
     class InvoiceStatus(DjangoChoices):
         new = ChoiceItem('new', 'New')
         published = ChoiceItem('published', 'Published')
+        agreed = ChoiceItem('agreed', 'Agreed')
         partial_payment = ChoiceItem('partial_payment', 'Partial Payment')
         paid_in_full = ChoiceItem('paid_in_full', 'Paid in Full')
     
@@ -44,30 +45,51 @@ class Invoice(model_base.TitledBase):
     archived_at = models.DateTimeField(null=True, blank=True)
     notes = models.CharField(max_length=512, null=True, blank=True)
     due_date = models.DateTimeField(null=True, blank=True)
-    total_wei_due = models.DecimalField(max_digits=50, decimal_places=0)
+    sent_date = models.DateTimeField(null=True, blank=True)
+    agreed_at = models.DateTimeField(null=True, blank=True)
+    invoice_amount_wei = models.DecimalField(max_digits=50, decimal_places=0)
+    paid_amount_wei = models.DecimalField(max_digits=50, decimal_places=0, default=0)
     min_payment_threshold = models.PositiveIntegerField(
         blank=True, default=100, validators=[MaxValueValidator(100), ])
 
     def save(self, *args, **kwargs):
-        super(Invoice, self).save(*args, **kwargs)
+        
         mail_admins(
             'New Invoice Created',
             'A new invoice was created on PayWei'
         )
-        if(self.delivery == 'email'):
+        if(self.delivery == 'email' and self.status == 'published' and self.sent_date == None):
             send_mail(
                 'Someone has sent you a bill on PayWei',
                 'paywei.co/pay/' + self.id,
                 'noreply@paywei.co',
                 [self.recipient_email]
             )
+            self.sent_date = timezone.now()
+        self._update_paid_amount()
+        super(Invoice, self).save(*args, **kwargs)
+
+    def _update_paid_amount(self):
+        self.paid_amount_wei = sum([p.amount_in_wei for p in self.payments.filter(status='confirmed')])
+        if self.paid_amount_wei > 0 and self.status == 'agreed':
+            self.status = 'partial_payment'
+        if self.paid_amount_wei == self.invoice_amount_wei and self.status in ['agreed', 'partial_payment']:
+            self.status = 'paid_in_full'
+        
 
     class Meta:
         ordering = ('-created_at',)
 
 
 class Payment(model_base.RandomPKBase):
+
+    class PaymentStatus(DjangoChoices):
+        new = ChoiceItem('new', 'New')
+        confirmed = ChoiceItem('confirmed', 'Confirmed')
+
     objects = models.Manager()
+    status = models.CharField(
+        max_length=32, default='new', choices=PaymentStatus.choices)
     invoice = models.ForeignKey(Invoice, related_name='payments', on_delete=models.DO_NOTHING)
     amount_in_wei = models.DecimalField(max_digits=50, decimal_places=0)
     usd_eth_price = models.DecimalField(max_digits=20, decimal_places=10)
