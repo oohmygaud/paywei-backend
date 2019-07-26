@@ -8,7 +8,7 @@ from django.views.generic import TemplateView
 
 from django.views.decorators.csrf import ensure_csrf_cookie
 import textwrap
-from apps.invoices.views import PaymentNotification
+from apps.invoices.views import PaymentNotification, Dashboard
 from django.http import HttpResponse
 from django.views.generic.base import View
 from rest_framework_simplejwt.views import (
@@ -25,8 +25,8 @@ urlpatterns = [
     path('mgmt/', admin.site.urls),
     path('', include(api.router.urls)),
     path('accounts/', include('rest_registration.api.urls')),
-    path('api/payment_received', PaymentNotification.as_view(), name='payment_notification')
-    
+    path('api/payment_received', PaymentNotification.as_view(), name='payment_notification'),
+    path('dashboard/', Dashboard.as_view(), name='dashboard'),
 
 ]
 

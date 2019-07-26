@@ -39,6 +39,9 @@ class APIKeyViewSet(viewsets.ModelViewSet):
             return APIKey.objects.none()
         return APIKey.objects.filter(user=self.request.user)
     
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+    
 
 class WhitelistAddressViewSet(viewsets.ModelViewSet):
     model = WhitelistAddress
@@ -55,6 +58,9 @@ class WhitelistAddressViewSet(viewsets.ModelViewSet):
         if not self.request.user.is_authenticated:
             return WhitelistAddress.objects.none()
         return WhitelistAddress.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):

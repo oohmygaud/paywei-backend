@@ -10,7 +10,8 @@ from apps.users.permissions import IsOwner
 from django.utils import timezone
 from rest_framework.decorators import action
 import json
-
+from django.db.models.functions import TruncDate
+from decimal import Decimal
 
 # Create your views here.
 
@@ -39,6 +40,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             qs = qs.exclude(archived_at__lte=timezone.now())
 
         return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
     
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):
@@ -64,6 +68,9 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
         if not self.request.user.is_authenticated:
             return Payment.objects.none()
         return Payment.objects.filter(invoice__user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 # TODO: SECURITY ALERT!
@@ -119,4 +126,42 @@ class PaymentNotification(APIView):
         return Response({
             'status': 'ok',
             'details': obj.data
+        })
+
+class Dashboard(APIView):
+    def get(self, request):
+        today = timezone.now().date()
+        start = today - timedelta(days=7)
+        my_payments = Payment.objects.filter(
+                invoice__user_id=request.user.id,
+                transaction_date_time__gte=start
+            )
+
+        grouped_by_date = my_payments.all(
+            ).annotate(
+                day=TruncDate('transaction_date_time')
+            ).values('day'
+            ).order_by('day'
+            ).annotate(total_wei=Sum('amount_in_wei')
+            ).values('day', 'total_wei'
+            )
+
+        print(grouped_by_date)
+
+        # Start with a dictionary so we can fill the empty days easily
+        data = {
+            obj['day']: obj['total_wei'] / Decimal(10E18)
+            for obj in grouped_by_date
+        }
+
+        zero_filled_list = [
+            {
+                'date': start + timedelta(days=i),
+                'ETH': data.get(start + timedelta(days=i), 0)
+            }
+            for i in range( (today - start).days + 1)
+        ]
+
+        return Response({
+            'payments_by_day': zero_filled_list
         })

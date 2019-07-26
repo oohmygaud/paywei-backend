@@ -404,3 +404,15 @@ class InvoiceTestCase(TestCase):
         self.assertEqual(list_response.data['detail'], 'Not found.')
 
     #   they should not be able to create an invoice with the other user's id
+        cross_account_invoice = views.InvoiceViewSet.as_view(
+            {'post': 'create'})(self._post(
+                test_user1,
+                '/invoices/',
+                {
+                    'user': test_user2.id,
+                    'pay_to': address2.id,
+                    'recipient_email': email,
+                    'invoice_amount_wei': 1000000000
+                }))
+
+        self.assertEqual(cross_account_invoice.data['user'], test_user1.id)
