@@ -112,5 +112,8 @@ class Payment(model_base.RandomPKBase):
             return json.loads(self.parameters_json)
         except:
             return {}
+    
+    class Meta:
+        ordering = ('-created_at',)
 
     

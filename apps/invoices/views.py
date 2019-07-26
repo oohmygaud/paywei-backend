@@ -32,7 +32,28 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request.user.is_authenticated:
             return Invoice.objects.none()
-        return Invoice.objects.filter(user=self.request.user)
+        qs = Invoice.objects.filter(user=self.request.user)
+
+        if self.action == 'list' and \
+            self.request.query_params.get('show_archived', '').lower() != 'true':
+            qs = qs.exclude(archived_at__lte=timezone.now())
+
+        return qs
+    
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        instance = self.get_object()
+        if not instance.archived_at:
+            instance.archived_at = timezone.now()
+        instance.save()
+        return Response(self.serializer_class(instance).data)
+    
+    @action(detail=True, methods=['post'])
+    def unarchive(self, request, pk=None):
+        instance = self.get_object()
+        instance.archived_at = None
+        instance.save()
+        return Response(self.serializer_class(instance).data)
         
 
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
