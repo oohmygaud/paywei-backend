@@ -16,6 +16,11 @@ class CustomUser(AbstractUser):
         max_length=10, choices=STATUS_CHOICES, default='active')
     default_notify_url = models.CharField(max_length=2048, blank=True, null=True)
 
+    @classmethod
+    def factory(cls, *args, **kwargs):
+        from apps.users.factory import UserFactory
+        return UserFactory(*args, **kwargs)
+
     def save(self, *args, **kwargs):
         super(CustomUser, self).save(*args, **kwargs)
         mail_admins(
@@ -46,7 +51,7 @@ class WhitelistAddress(model_base.RandomPKBase):
         pending = ChoiceItem('pending', 'Pending')
         verified = ChoiceItem('verified', 'Verified')
         denied = ChoiceItem('denied', 'Denied')
-        deactivated = ChoiceItem('deactivated', 'Deactivated')
+        archived = ChoiceItem('archived', 'Archived')
 
     objects = models.Manager()
     nickname = models.CharField(max_length=64)
@@ -54,11 +59,16 @@ class WhitelistAddress(model_base.RandomPKBase):
     secret = models.CharField(max_length=32, default=makeKey)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    revoked_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
     user = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name='addresses')
     status = models.CharField(
         max_length=32, default='pending', choices=AddressStatus.choices)
+    
+    @classmethod
+    def factory(cls, *args, **kwargs):
+        from apps.users.factory import WhitelistAddressFactory
+        return WhitelistAddressFactory(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         _new = bool(getattr(self, 'pk', None))

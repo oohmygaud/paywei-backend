@@ -43,13 +43,17 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        if not instance.archived_at:
+            instance.archived_at = timezone.now()
+        instance.save()
+        return instance
     
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):
         instance = self.get_object()
-        if not instance.archived_at:
-            instance.archived_at = timezone.now()
-        instance.save()
+        self.perform_destroy(instance)
         return Response(self.serializer_class(instance).data)
     
     @action(detail=True, methods=['post'])

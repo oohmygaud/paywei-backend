@@ -21,3 +21,4 @@ django-cors-headers
 django-choices
 djangorestframework_simplejwt
 uwsgi
+factory_boy

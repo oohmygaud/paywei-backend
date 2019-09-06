@@ -62,12 +62,21 @@ class WhitelistAddressViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def perform_destroy(self, instance):
+        if not instance.archived_at:
+            instance.archived_at = timezone.now()
+            instance.status = WhitelistAddress.AddressStatus.archived
+        instance.save()
+        return instance
+
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
         instance = self.get_object()
         yesterday = timezone.now() - timedelta(days=1)
         if self.request.data['secret'] != instance.secret or instance.created_at < yesterday:
             return Response({'error': 'unable to verify this address'})
-        instance.status = 'verified'
+        instance.status = WhitelistAddress.AddressStatus.verified
         instance.save()
         return Response(self.serializer_class(instance).data)
+    
+    

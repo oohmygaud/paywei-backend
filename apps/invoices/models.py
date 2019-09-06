@@ -12,10 +12,8 @@ from django.core.validators import MaxValueValidator
 from djchoices import ChoiceItem, DjangoChoices
 from django.core.mail import send_mail, mail_admins
 
-
 def makeKey():
     return str(uuid4()).replace('-', '')[:16].upper()
-
 
 class Invoice(model_base.TitledBase):
 
@@ -33,7 +31,7 @@ class Invoice(model_base.TitledBase):
 
     objects = models.Manager()
     user = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name='invoices')
+        CustomUser, on_delete=models.DO_NOTHING, related_name='invoices')
     status = models.CharField(
         max_length=32, default='new', choices=InvoiceStatus.choices)
     delivery = models.CharField(
@@ -51,6 +49,11 @@ class Invoice(model_base.TitledBase):
     paid_amount_wei = models.DecimalField(max_digits=50, decimal_places=0, default=0)
     min_payment_threshold = models.PositiveIntegerField(
         blank=True, default=100, validators=[MaxValueValidator(100), ])
+    
+    @classmethod
+    def factory(cls, *args, **kwargs):
+        from apps.invoices.factory import InvoiceFactory
+        return InvoiceFactory(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         
@@ -66,19 +69,33 @@ class Invoice(model_base.TitledBase):
                 [self.recipient_email]
             )
             self.sent_date = timezone.now()
-        self._update_paid_amount()
+        self._update_paid_amount(save=False)
         super(Invoice, self).save(*args, **kwargs)
 
-    def _update_paid_amount(self):
+    def _update_paid_amount(self, save=True):
         self.paid_amount_wei = sum([p.amount_in_wei for p in self.payments.filter(status='confirmed')])
         if self.paid_amount_wei > 0 and self.status == 'agreed':
             self.status = 'partial_payment'
         if self.paid_amount_wei == self.invoice_amount_wei and self.status in ['agreed', 'partial_payment']:
             self.status = 'paid_in_full'
-        
+        if save:
+            self.save()
 
     class Meta:
         ordering = ('-created_at',)
+
+class InvoiceItem(model_base.TitledBase):
+    objects = models.Manager()
+    order = models.PositiveIntegerField()
+    quantity = models.PositiveIntegerField()
+    price_in_wei = models.DecimalField(max_digits=50, decimal_places=0)
+    invoice = models.ForeignKey(Invoice, related_name='invoice_items', on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ['order']
+
+class InvoiceFactory:
+    pass
 
 
 class Payment(model_base.RandomPKBase):
@@ -106,14 +123,24 @@ class Payment(model_base.RandomPKBase):
     to_address = models.CharField(max_length=64)
     transaction_date_time = models.DateTimeField()
 
+    @classmethod
+    def factory(cls, *args, **kwargs):
+        from apps.invoices.factory import PaymentFactory
+        return PaymentFactory(*args, **kwargs)
+
     @property
     def parameters(self):
         try:
             return json.loads(self.parameters_json)
         except:
             return {}
-    
+
     class Meta:
         ordering = ('-created_at',)
 
-    
+def _update_paid_amount(sender, instance, **kwargs):
+    instance.invoice._update_paid_amount()
+
+from django.db.models.signals import post_save
+post_save.connect(_update_paid_amount, sender=Payment)
+

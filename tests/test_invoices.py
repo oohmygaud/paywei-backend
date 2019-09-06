@@ -3,7 +3,8 @@ from django.core import mail
 from rest_framework.test import APIClient, APIRequestFactory
 from rest_framework.test import force_authenticate
 from apps.users.models import CustomUser as User, WhitelistAddress
-from apps.invoices.models import Invoice, Payment
+from apps.invoices.models import Invoice, Payment, InvoiceItem
+from apps.invoices.serializers import InvoiceSerializer
 from datetime import datetime, timedelta
 import json
 import pytest
@@ -416,3 +417,63 @@ class InvoiceTestCase(TestCase):
                 }))
 
         self.assertEqual(cross_account_invoice.data['user'], test_user1.id)
+
+    def test_invoice_lineitem_serializers(self):
+
+        test_user = User.objects.create_user(
+            username="audrey", email="test@audrey.com", password="audrey")
+        email = 'test@paywei.co'
+
+        address = WhitelistAddress.objects.create(
+            address='0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8',
+            nickname='Audrey',
+            user=test_user,
+            status=WhitelistAddress.AddressStatus.verified
+        )
+        # inv = Invoice.objects.create()
+        invoice = Invoice.objects.create(
+            user=test_user,
+            pay_to=address,
+            recipient_email=email,
+            invoice_amount_wei=3000000000
+        )
+        # item_a = inv.items.create()
+        InvoiceItem.objects.create(
+            order=1,
+            title='First',
+            quantity=1,
+            price_in_wei=1000000000,
+            invoice=invoice
+        )
+        # item_b = inv.items.create()
+        InvoiceItem.objects.create(
+            order=2,
+            title='Second',
+            quantity=1,
+            price_in_wei=2000000000,
+            invoice=invoice
+        )
+        # ser = InvoiceSerializer(inv)
+        serializer = InvoiceSerializer(invoice)
+        # assert(2, len(ser.data['items']))
+        self.assertEqual(2, len(serializer.data['invoice_items']))
+
+        # make = InvoiceSerializer( { ...invoice_details, items: [...] })
+        make = InvoiceSerializer( data={
+            'user': test_user.id,
+            'pay_to': address.id,
+            'recipient_email': email,
+            'invoice_amount_wei': 10000000000,
+            'invoice_items': [
+                {'order': 1, 'title': 'Item1', 'quantity': 1, 'price_in_wei': 500000000},
+                {'order': 2, 'title': 'Item2', 'quantity': 1, 'price_in_wei': 250000000},
+                {'order': 3, 'title': 'Item3', 'quantity': 1, 'price_in_wei': 250000000},
+            ],
+        })
+        
+        self.assertEqual(True, make.is_valid(), "Serializer should be valid: %s"%make.errors)
+        obj = make.save()
+        # assert(Invoice.objects.count(), 2)
+        self.assertEqual(2, Invoice.objects.count())
+        # assert(obj.items.count(), 2)
+        self.assertEqual(3, obj.invoice_items.count())
