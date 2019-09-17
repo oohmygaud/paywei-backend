@@ -3,8 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from datetime import datetime, timedelta
 from django.db.models import Sum
-from apps.invoices.serializers import InvoiceSerializer, PaymentSerializer
-from apps.invoices.models import Invoice, Payment
+from apps.invoices.serializers import InvoiceSerializer, PaymentSerializer, PaymentCurrencySerializer
+from apps.invoices.models import Invoice, Payment, PaymentCurrency
 from rest_framework import viewsets
 from apps.users.permissions import IsOwner
 from django.utils import timezone
@@ -75,6 +75,12 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class PaymentCurrencyViewSet(viewsets.ReadOnlyModelViewSet):
+    model = PaymentCurrency
+    serializer_class = PaymentCurrencySerializer
+    queryset = PaymentCurrency.objects.all()
 
 
 # TODO: SECURITY ALERT!

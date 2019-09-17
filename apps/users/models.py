@@ -15,6 +15,18 @@ class CustomUser(AbstractUser):
     status = models.CharField(
         max_length=10, choices=STATUS_CHOICES, default='active')
     default_notify_url = models.CharField(max_length=2048, blank=True, null=True)
+    default_address = models.ForeignKey(
+        'users.WhitelistAddress',
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True
+    )
+    default_pricing_currency = models.ForeignKey(
+        'invoices.PaymentCurrency',
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True
+    )
 
     @classmethod
     def factory(cls, *args, **kwargs):
@@ -36,7 +48,7 @@ def makeKey():
 class APIKey(model_base.RandomPKBase):
     objects = models.Manager()
     user = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name='api_keys')
+        CustomUser, on_delete=models.DO_NOTHING, related_name='api_keys')
     key = models.CharField(max_length=32, default=makeKey)
     archived_at = models.DateTimeField(null=True, blank=True)
     nickname = models.CharField(max_length=64)

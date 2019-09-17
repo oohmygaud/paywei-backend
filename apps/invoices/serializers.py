@@ -1,4 +1,4 @@
-from apps.invoices.models import Invoice, Payment, InvoiceItem
+from apps.invoices.models import Invoice, Payment, InvoiceItem, PaymentCurrency
 from rest_framework import serializers
 import re
 
@@ -10,14 +10,14 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
         fields = ('__all__')
 
 class InvoiceSerializer(serializers.ModelSerializer):
-    invoice_items = InvoiceItemSerializer(many=True, required=False)
+    line_items = InvoiceItemSerializer(many=True, required=False)
 
     class Meta:
         model = Invoice
         fields = ('__all__')
 
     def create(self, validated_data):
-        item_data = validated_data.pop('invoice_items', [])
+        item_data = validated_data.pop('line_items', [])
         invoice = Invoice.objects.create(**validated_data)
         for item in item_data:
             InvoiceItem.objects.create(invoice=invoice, **item)
@@ -40,6 +40,10 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = ('__all__')
 
+class PaymentCurrencySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentCurrency
+        fields = ('__all__')
 
 
     

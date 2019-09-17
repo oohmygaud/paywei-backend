@@ -138,9 +138,31 @@ class Payment(model_base.RandomPKBase):
     class Meta:
         ordering = ('-created_at',)
 
+class PaymentCurrency(model_base.TitledBase):
+    objects = models.Manager()
+    contract_address = models.CharField(max_length=50)
+    symbol = models.CharField(max_length=64)
+    decimal_places = models.PositiveIntegerField()    
+
 def _update_paid_amount(sender, instance, **kwargs):
     instance.invoice._update_paid_amount()
 
 from django.db.models.signals import post_save
 post_save.connect(_update_paid_amount, sender=Payment)
 
+
+
+DEFAULT_CURRENCIES = dict(
+    DAI=lambda: PaymentCurrency.objects.get_or_create(
+        title='USD Stable',
+        symbol='DAI',
+        decimal_places=18,
+        contract_address='0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359'
+    )[0],
+    ETH=lambda: PaymentCurrency.objects.get_or_create(
+        title='Ether',
+        symbol='ETH',
+        decimal_places=18,
+        contract_address='0x0000000000000000000000000000000000000000'
+    )[0],
+)
