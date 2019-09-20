@@ -11,10 +11,18 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
 
 class InvoiceSerializer(serializers.ModelSerializer):
     line_items = InvoiceItemSerializer(many=True, required=False)
+    currency_data = serializers.SerializerMethodField()
+    amount_due = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
         fields = ('__all__')
+
+    def get_currency_data(self, obj):
+        return PaymentCurrencySerializer(obj.currency).data
+
+    def get_amount_due(self, obj):
+        return obj.get_amount_due()
 
     def create(self, validated_data):
         item_data = validated_data.pop('line_items', [])
@@ -36,6 +44,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return data
 
 class PaymentSerializer(serializers.ModelSerializer):
+    currency_data = serializers.SerializerMethodField()
+
+    def get_currency_data(self, obj):
+        return PaymentCurrencySerializer(obj.currency).data
+
     class Meta:
         model = Payment
         fields = ('__all__')

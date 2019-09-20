@@ -20,7 +20,7 @@ def delete_default_currencies(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('invoices', '0008_paymentcurrency'),
+        ('invoices', '0001_initial'),
     ]
 
     operations = [

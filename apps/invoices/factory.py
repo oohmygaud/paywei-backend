@@ -7,6 +7,10 @@ import random
 ADDRESS_VALID = '0123456789abcdef'
 def make_address():
   return '0x'+''.join(random.choice(ADDRESS_VALID) for i in range(20))
+  
+def random_currency():
+  from apps.invoices.models import DEFAULT_CURRENCIES
+  return random.choice(list(create() for create in DEFAULT_CURRENCIES.values()))
 
 def random_title():
   # madlib time
@@ -22,7 +26,8 @@ class InvoiceFactory(factory.DjangoModelFactory):
   user = factory.SubFactory(UserFactory)
   title = factory.LazyFunction(random_title)
   recipient_email = factory.LazyAttribute(lambda a: '{0}.test@example.com'.format(a.user).lower())
-  invoice_amount_wei = factory.LazyFunction(lambda: 100000000000000000*random.randrange(100))
+  invoice_amount = factory.LazyFunction(lambda: 100000000000000000*random.randrange(100))
+  currency = factory.LazyFunction(random_currency)
   min_payment_threshold = 10
   status = 'agreed'
 
@@ -39,10 +44,11 @@ class PaymentFactory(factory.DjangoModelFactory):
 
   status = "confirmed"
   invoice = factory.SubFactory(InvoiceFactory)
-  amount_in_wei = factory.LazyAttribute(lambda p: random.choice([
-    p.invoice.invoice_amount_wei,
-    p.invoice.invoice_amount_wei/2,
+  amount = factory.LazyAttribute(lambda p: random.choice([
+    p.invoice.invoice_amount,
+    p.invoice.invoice_amount/2,
   ]))
+  currency = factory.LazyFunction(random_currency)
   usd_eth_price = 220
   block_hash = 0
   created_at = factory.LazyFunction(timezone.now)

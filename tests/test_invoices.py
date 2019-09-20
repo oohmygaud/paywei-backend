@@ -14,7 +14,7 @@ from pprint import pprint
 
 def get_payment_data(invoice, amount=None):
     data = json.load(open('tests/fixtures/testFullPayment.json'))
-    data['transaction']['value'] = amount or invoice.invoice_amount_wei
+    data['transaction']['value'] = amount or invoice.invoice_amount
 
     params = json.loads(data['transaction']['parameters_json'])
     params['values']['invoiceId'] = invoice.id
@@ -74,7 +74,7 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 1000000000,
+                    'invoice_amount': 1000000000,
                     'status': 'published'
                 }
             ))
@@ -93,7 +93,7 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 1000000000,
+                    'invoice_amount': 1000000000,
                     'delivery': Invoice.DeliveryChoices.link
                 }
             ))
@@ -127,7 +127,7 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 1000000000,
+                    'invoice_amount': 1000000000,
                     'status': 'agreed',
                 }
             ))
@@ -144,8 +144,8 @@ class InvoiceTestCase(TestCase):
         invoice = Invoice.objects.first()
         self.assertEqual(invoice.status, 'paid_in_full')
     #   should have no balance due
-        self.assertEqual(invoice.invoice_amount_wei -
-                         invoice.paid_amount_wei, 0)
+        self.assertEqual(invoice.invoice_amount -
+                         invoice.paid_amount, 0)
     #   should have an associated payment
         self.assertEqual(Payment.objects.count(), 1)
 
@@ -174,7 +174,7 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 1000000000,
+                    'invoice_amount': 1000000000,
                     'status': 'agreed',
                     'min_payment_threshold': 25
                 }
@@ -188,8 +188,8 @@ class InvoiceTestCase(TestCase):
         invoice = Invoice.objects.first()
 
     #   should have the correct balance due
-        self.assertEqual(invoice.invoice_amount_wei -
-                         invoice.paid_amount_wei, 500000000)
+        self.assertEqual(invoice.invoice_amount -
+                         invoice.paid_amount, 500000000)
     #   should have an associated payment
         self.assertEqual(Payment.objects.count(), 1)
     #   should make the invoice status partial payment
@@ -200,8 +200,8 @@ class InvoiceTestCase(TestCase):
         payment_response = views.PaymentNotification.as_view()(payment)
         invoice = Invoice.objects.first()
     #   should have the correct balance due
-        self.assertEqual(invoice.invoice_amount_wei -
-                         invoice.paid_amount_wei, 250000000)
+        self.assertEqual(invoice.invoice_amount -
+                         invoice.paid_amount, 250000000)
     #   should have 2 associated payment
         self.assertEqual(Payment.objects.count(), 2)
     #   should make the invoice status partial payment
@@ -212,8 +212,8 @@ class InvoiceTestCase(TestCase):
         payment_response = views.PaymentNotification.as_view()(payment)
         invoice = Invoice.objects.first()
     #   should have no balance due
-        self.assertEqual(invoice.invoice_amount_wei -
-                         invoice.paid_amount_wei, 0)
+        self.assertEqual(invoice.invoice_amount -
+                         invoice.paid_amount, 0)
     #   should have 3 associated payment
         self.assertEqual(Payment.objects.count(), 3)
     #   should make the invoice status paid
@@ -244,12 +244,12 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 1000000000,
+                    'invoice_amount': 1000000000,
                     'status': 'new'
                 }))
         self.assertEqual(Invoice.objects.count(), 1)
         self.assertEqual(
-            Invoice.objects.first().invoice_amount_wei, 1000000000)
+            Invoice.objects.first().invoice_amount, 1000000000)
         invoice = Invoice.objects.first()
 
     #   should be able to edit invoice details
@@ -261,12 +261,12 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 2000000000,
+                    'invoice_amount': 2000000000,
                     'status': 'agreed'
                 }), pk=invoice.id)
         self.assertEqual(Invoice.objects.count(), 1)
         self.assertEqual(
-            Invoice.objects.first().invoice_amount_wei, 2000000000)
+            Invoice.objects.first().invoice_amount, 2000000000)
         invoice = Invoice.objects.first()
 
     #   should not be able to edit invoice details
@@ -278,7 +278,7 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 3000000000,
+                    'invoice_amount': 3000000000,
                     'status': 'agreed'
                 }), pk=invoice.id)
 
@@ -287,7 +287,7 @@ class InvoiceTestCase(TestCase):
             invoice_response.data['_'][0], 'This invoice has already been agreed upon')
         self.assertEqual(Invoice.objects.count(), 1)
         self.assertEqual(
-            Invoice.objects.first().invoice_amount_wei, 2000000000)
+            Invoice.objects.first().invoice_amount, 2000000000)
 
     # test save invoice without sending
     #   if I save an invoice
@@ -314,7 +314,7 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 1000000000
+                    'invoice_amount': 1000000000
                 }))
 
     #   should have an outbox of 0
@@ -353,21 +353,21 @@ class InvoiceTestCase(TestCase):
             user=test_user1,
             pay_to=address1,
             recipient_email=email,
-            invoice_amount_wei=1000000000
+            invoice_amount=1000000000
         )
 
         invoice_b = Invoice.objects.create(
             user=test_user1,
             pay_to=address1,
             recipient_email=email,
-            invoice_amount_wei=2000000000
+            invoice_amount=2000000000
         )
 
         invoice_c = Invoice.objects.create(
             user=test_user2,
             pay_to=address2,
             recipient_email=email,
-            invoice_amount_wei=3000000000
+            invoice_amount=3000000000
         )
 
         list_response = views.InvoiceViewSet.as_view(
@@ -413,7 +413,7 @@ class InvoiceTestCase(TestCase):
                     'user': test_user2.id,
                     'pay_to': address2.id,
                     'recipient_email': email,
-                    'invoice_amount_wei': 1000000000
+                    'invoice_amount': 1000000000
                 }))
 
         self.assertEqual(cross_account_invoice.data['user'], test_user1.id)
@@ -435,14 +435,14 @@ class InvoiceTestCase(TestCase):
             user=test_user,
             pay_to=address,
             recipient_email=email,
-            invoice_amount_wei=3000000000
+            invoice_amount=3000000000
         )
         # item_a = inv.items.create()
         InvoiceItem.objects.create(
             order=1,
             title='First',
             quantity=1,
-            price_in_wei=1000000000,
+            price=1000000000,
             invoice=invoice
         )
         # item_b = inv.items.create()
@@ -450,24 +450,24 @@ class InvoiceTestCase(TestCase):
             order=2,
             title='Second',
             quantity=1,
-            price_in_wei=2000000000,
+            price=2000000000,
             invoice=invoice
         )
         # ser = InvoiceSerializer(inv)
         serializer = InvoiceSerializer(invoice)
         # assert(2, len(ser.data['items']))
-        self.assertEqual(2, len(serializer.data['invoice_items']))
+        self.assertEqual(2, len(serializer.data['line_items']))
 
         # make = InvoiceSerializer( { ...invoice_details, items: [...] })
         make = InvoiceSerializer( data={
             'user': test_user.id,
             'pay_to': address.id,
             'recipient_email': email,
-            'invoice_amount_wei': 10000000000,
-            'invoice_items': [
-                {'order': 1, 'title': 'Item1', 'quantity': 1, 'price_in_wei': 500000000},
-                {'order': 2, 'title': 'Item2', 'quantity': 1, 'price_in_wei': 250000000},
-                {'order': 3, 'title': 'Item3', 'quantity': 1, 'price_in_wei': 250000000},
+            'invoice_amount': 10000000000,
+            'line_items': [
+                {'order': 1, 'title': 'Item1', 'quantity': 1, 'price': 500000000},
+                {'order': 2, 'title': 'Item2', 'quantity': 1, 'price': 250000000},
+                {'order': 3, 'title': 'Item3', 'quantity': 1, 'price': 250000000},
             ],
         })
         
@@ -476,4 +476,4 @@ class InvoiceTestCase(TestCase):
         # assert(Invoice.objects.count(), 2)
         self.assertEqual(2, Invoice.objects.count())
         # assert(obj.items.count(), 2)
-        self.assertEqual(3, obj.invoice_items.count())
+        self.assertEqual(3, obj.line_items.count())

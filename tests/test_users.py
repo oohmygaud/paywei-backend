@@ -70,7 +70,7 @@ class UserTestCase(TestCase):
         request = factory.post('/invoices/', {
             'user': test_user.id,
             'pay_to': address1.id,
-            'invoice_amount_wei': 1000000000
+            'invoice_amount': 1000000000
         })
 
         force_authenticate(request, user=test_user)
@@ -80,7 +80,7 @@ class UserTestCase(TestCase):
         request = factory.post('/invoices/', {
             'user': test_user.id,
             'pay_to': address2.id,
-            'invoice_amount_wei': 2000000000
+            'invoice_amount': 2000000000
         })
         
         force_authenticate(request, user=test_user)

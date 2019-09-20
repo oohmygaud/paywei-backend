@@ -120,7 +120,7 @@ class PaymentNotification(APIView):
             'nonce': tx['nonce'],
             'to_address': tx['to_address'],
             'transaction_date_time': tx['created_at'],
-            'amount_in_wei': int(tx['value']),
+            'amount': int(tx['value']),
             'usd_eth_price': tx['pricing_info']['price'],
             'parameters_json': tx['parameters_json'],
             'status': 'confirmed',
@@ -152,15 +152,15 @@ class Dashboard(APIView):
                 day=TruncDate('transaction_date_time')
             ).values('day'
             ).order_by('day'
-            ).annotate(total_wei=Sum('amount_in_wei')
-            ).values('day', 'total_wei'
+            ).annotate(total=Sum('amount')
+            ).values('day', 'total'
             )
 
         print(grouped_by_date)
 
         # Start with a dictionary so we can fill the empty days easily
         data = {
-            obj['day']: obj['total_wei'] / Decimal(10E18)
+            obj['day']: obj['total'] / Decimal(10E18)
             for obj in grouped_by_date
         }
 

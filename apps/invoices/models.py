@@ -45,8 +45,9 @@ class Invoice(model_base.TitledBase):
     due_date = models.DateTimeField(null=True, blank=True)
     sent_date = models.DateTimeField(null=True, blank=True)
     agreed_at = models.DateTimeField(null=True, blank=True)
-    invoice_amount_wei = models.DecimalField(max_digits=50, decimal_places=0)
-    paid_amount_wei = models.DecimalField(max_digits=50, decimal_places=0, default=0)
+    invoice_amount = models.DecimalField(max_digits=50, decimal_places=0)
+    currency = models.ForeignKey('invoices.PaymentCurrency', on_delete=models.DO_NOTHING)
+    paid_amount = models.DecimalField(max_digits=50, decimal_places=0, default=0)
     min_payment_threshold = models.PositiveIntegerField(
         blank=True, default=100, validators=[MaxValueValidator(100), ])
     
@@ -73,13 +74,16 @@ class Invoice(model_base.TitledBase):
         super(Invoice, self).save(*args, **kwargs)
 
     def _update_paid_amount(self, save=True):
-        self.paid_amount_wei = sum([p.amount_in_wei for p in self.payments.filter(status='confirmed')])
-        if self.paid_amount_wei > 0 and self.status == 'agreed':
+        self.paid_amount = sum([p.amount for p in self.payments.filter(status='confirmed')])
+        if self.paid_amount > 0 and self.status == 'agreed':
             self.status = 'partial_payment'
-        if self.paid_amount_wei == self.invoice_amount_wei and self.status in ['agreed', 'partial_payment']:
+        if self.paid_amount == self.invoice_amount and self.status in ['agreed', 'partial_payment']:
             self.status = 'paid_in_full'
         if save:
             self.save()
+
+    def get_amount_due(self):
+        return self.invoice_amount - self.paid_amount
 
     class Meta:
         ordering = ('-created_at',)
@@ -88,8 +92,8 @@ class InvoiceItem(model_base.TitledBase):
     objects = models.Manager()
     order = models.PositiveIntegerField()
     quantity = models.PositiveIntegerField()
-    price_in_wei = models.DecimalField(max_digits=50, decimal_places=0)
-    invoice = models.ForeignKey(Invoice, related_name='invoice_items', on_delete=models.CASCADE)
+    price = models.DecimalField(max_digits=50, decimal_places=0)
+    invoice = models.ForeignKey(Invoice, related_name='line_items', on_delete=models.CASCADE)
 
     class Meta:
         ordering = ['order']
@@ -108,7 +112,8 @@ class Payment(model_base.RandomPKBase):
     status = models.CharField(
         max_length=32, default='new', choices=PaymentStatus.choices)
     invoice = models.ForeignKey(Invoice, related_name='payments', on_delete=models.DO_NOTHING)
-    amount_in_wei = models.DecimalField(max_digits=50, decimal_places=0)
+    amount = models.DecimalField(max_digits=50, decimal_places=0)
+    currency = models.ForeignKey('invoices.PaymentCurrency', on_delete=models.DO_NOTHING)
     usd_eth_price = models.DecimalField(max_digits=20, decimal_places=10)
     block_hash = models.TextField()
     block_number = models.PositiveIntegerField()
