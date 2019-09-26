@@ -17,4 +17,5 @@ django-rest-registration
 django-jet
 django-cors-headers
 djangorestframework_simplejwt
-
+django-choices==1.7.0
+factory-boy

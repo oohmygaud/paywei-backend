@@ -86,7 +86,7 @@ class Invoice(model_base.TitledBase):
         return self.invoice_amount - self.paid_amount
 
     class Meta:
-        ordering = ('-due_date', '-created_at',)
+        ordering = ('-created_at',)
 
 class InvoiceItem(model_base.TitledBase):
     objects = models.Manager()
