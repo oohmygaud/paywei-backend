@@ -92,6 +92,7 @@ class PaymentCurrencyViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PaymentNotification(APIView):
     def post(self, request, format=None):
+        from .models import PaymentCurrency
         tx = request.data['transaction']
         if not tx['parameters_json']:
             return Response({
@@ -107,6 +108,20 @@ class PaymentNotification(APIView):
                 'status': 'failed',
                 'errors': {'invoice_id': 'No such invoice'}
             })
+        if tx['is_token']:
+            try:
+                currency = PaymentCurrency.objects.get(contract_address=tx['to_address'])
+            except PaymentCurrency.DoesNotExist:
+                from django.core.mail import mail_admins
+                mail_admins(
+                    'Unexpected Currency Recieved For Invoice',
+                    'https://etherscan.io/tx/'+tx['tx_hash']
+                )
+                raise
+        else:
+            currency = PaymentCurrency.ETH()
+
+        amount = int(tx['is_token'] and tx['token_amount'] or tx['value'])
 
         obj = PaymentSerializer(data={
             'invoice': invoice.id,
@@ -118,11 +133,13 @@ class PaymentNotification(APIView):
             'tx_hash': tx['tx_hash'],
             'tx_input': tx['tx_input'],
             'nonce': tx['nonce'],
-            'to_address': tx['to_address'],
+            'to_address': tx['is_token'] and tx['token_to'] or tx['to_address'],
             'transaction_date_time': tx['created_at'],
-            'amount': int(tx['value']),
-            'usd_eth_price': tx['pricing_info']['price'],
+            'amount': amount,
+            'conversion_rate': currency.convert_rate(invoice.currency, eth_usd_price=tx['pricing_info']['price']),
+            'converted_amount': currency.convert_amount(invoice.currency, amount, eth_usd_price=tx['pricing_info']['price']),
             'parameters_json': tx['parameters_json'],
+            'currency': currency.id,
             'status': 'confirmed',
             'created_at': timezone.now()
         })

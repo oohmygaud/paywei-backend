@@ -3,7 +3,7 @@ from django.core import mail
 from rest_framework.test import APIClient, APIRequestFactory
 from rest_framework.test import force_authenticate
 from apps.users.models import CustomUser as User, WhitelistAddress
-from apps.invoices.models import Invoice, Payment, InvoiceItem
+from apps.invoices.models import Invoice, Payment, InvoiceItem, PaymentCurrency
 from apps.invoices.serializers import InvoiceSerializer
 from datetime import datetime, timedelta
 import json
@@ -11,10 +11,14 @@ import pytest
 import io
 from pprint import pprint
 
-
-def get_payment_data(invoice, amount=None):
+def get_payment_data(invoice, amount=None, symbol='ETH'):
     data = json.load(open('tests/fixtures/testFullPayment.json'))
     data['transaction']['value'] = amount or invoice.invoice_amount
+    if symbol != 'ETH': # TODO Needs to support generating mocked txgun DAI token transactions
+        currency = PaymentCurrency.objects.get(symbol=symbol)
+        data['to_address'] = PaymentCurrency.contract_address
+        data['token_to'] = invoice.pay_to
+        data['token_amount'] = amount
 
     params = json.loads(data['transaction']['parameters_json'])
     params['values']['invoiceId'] = invoice.id
@@ -58,7 +62,6 @@ class InvoiceTestCase(TestCase):
         test_user = User.objects.create_user(
             username="audrey", email="test@audrey.com", password="audrey")
         email = 'test@paywei.co'
-
         address = WhitelistAddress.objects.create(
             address='0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8',
             nickname='Barbara',
@@ -75,6 +78,7 @@ class InvoiceTestCase(TestCase):
                     'pay_to': address.id,
                     'recipient_email': email,
                     'invoice_amount': 1000000000,
+                    'currency': PaymentCurrency.ETH().id,
                     'status': 'published'
                 }
             ))
@@ -94,6 +98,7 @@ class InvoiceTestCase(TestCase):
                     'pay_to': address.id,
                     'recipient_email': email,
                     'invoice_amount': 1000000000,
+                    'currency': PaymentCurrency.ETH().id,
                     'delivery': Invoice.DeliveryChoices.link
                 }
             ))
@@ -128,6 +133,7 @@ class InvoiceTestCase(TestCase):
                     'pay_to': address.id,
                     'recipient_email': email,
                     'invoice_amount': 1000000000,
+                    'currency': PaymentCurrency.ETH().id,
                     'status': 'agreed',
                 }
             ))
@@ -175,6 +181,7 @@ class InvoiceTestCase(TestCase):
                     'pay_to': address.id,
                     'recipient_email': email,
                     'invoice_amount': 1000000000,
+                    'currency': PaymentCurrency.ETH().id,
                     'status': 'agreed',
                     'min_payment_threshold': 25
                 }
@@ -245,6 +252,7 @@ class InvoiceTestCase(TestCase):
                     'pay_to': address.id,
                     'recipient_email': email,
                     'invoice_amount': 1000000000,
+                    'currency': PaymentCurrency.ETH().id,
                     'status': 'new'
                 }))
         self.assertEqual(Invoice.objects.count(), 1)
@@ -262,6 +270,7 @@ class InvoiceTestCase(TestCase):
                     'pay_to': address.id,
                     'recipient_email': email,
                     'invoice_amount': 2000000000,
+                    'currency': PaymentCurrency.ETH().id,
                     'status': 'agreed'
                 }), pk=invoice.id)
         self.assertEqual(Invoice.objects.count(), 1)
@@ -279,6 +288,7 @@ class InvoiceTestCase(TestCase):
                     'pay_to': address.id,
                     'recipient_email': email,
                     'invoice_amount': 3000000000,
+                    'currency': PaymentCurrency.ETH().id,
                     'status': 'agreed'
                 }), pk=invoice.id)
 
@@ -314,7 +324,8 @@ class InvoiceTestCase(TestCase):
                     'user': test_user.id,
                     'pay_to': address.id,
                     'recipient_email': email,
-                    'invoice_amount': 1000000000
+                    'invoice_amount': 1000000000,
+                    'currency': PaymentCurrency.ETH().id,
                 }))
 
     #   should have an outbox of 0
@@ -353,21 +364,24 @@ class InvoiceTestCase(TestCase):
             user=test_user1,
             pay_to=address1,
             recipient_email=email,
-            invoice_amount=1000000000
+            invoice_amount=1000000000,
+            currency=PaymentCurrency.ETH()
         )
 
         invoice_b = Invoice.objects.create(
             user=test_user1,
             pay_to=address1,
             recipient_email=email,
-            invoice_amount=2000000000
+            invoice_amount=2000000000,
+            currency=PaymentCurrency.ETH()
         )
 
         invoice_c = Invoice.objects.create(
             user=test_user2,
             pay_to=address2,
             recipient_email=email,
-            invoice_amount=3000000000
+            invoice_amount=3000000000,
+            currency=PaymentCurrency.ETH()
         )
 
         list_response = views.InvoiceViewSet.as_view(
@@ -413,7 +427,8 @@ class InvoiceTestCase(TestCase):
                     'user': test_user2.id,
                     'pay_to': address2.id,
                     'recipient_email': email,
-                    'invoice_amount': 1000000000
+                    'invoice_amount': 1000000000,
+                    'currency': PaymentCurrency.ETH().id,
                 }))
 
         self.assertEqual(cross_account_invoice.data['user'], test_user1.id)
@@ -435,7 +450,8 @@ class InvoiceTestCase(TestCase):
             user=test_user,
             pay_to=address,
             recipient_email=email,
-            invoice_amount=3000000000
+            invoice_amount=3000000000,
+            currency=PaymentCurrency.ETH()
         )
         # item_a = inv.items.create()
         InvoiceItem.objects.create(
@@ -464,6 +480,7 @@ class InvoiceTestCase(TestCase):
             'pay_to': address.id,
             'recipient_email': email,
             'invoice_amount': 10000000000,
+            'currency': PaymentCurrency.ETH().id,
             'line_items': [
                 {'order': 1, 'title': 'Item1', 'quantity': 1, 'price': 500000000},
                 {'order': 2, 'title': 'Item2', 'quantity': 1, 'price': 250000000},

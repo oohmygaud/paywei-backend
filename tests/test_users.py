@@ -3,7 +3,7 @@ from django.core import mail
 from rest_framework.test import APIClient, APIRequestFactory
 from rest_framework.test import force_authenticate
 from apps.users.models import CustomUser as User, APIKey, WhitelistAddress
-from apps.invoices.models import Invoice
+from apps.invoices.models import Invoice, PaymentCurrency
 from datetime import datetime, timedelta
 import json
 import pytest
@@ -70,7 +70,8 @@ class UserTestCase(TestCase):
         request = factory.post('/invoices/', {
             'user': test_user.id,
             'pay_to': address1.id,
-            'invoice_amount': 1000000000
+            'invoice_amount': 1000000000,
+            'currency': PaymentCurrency.ETH().id,
         })
 
         force_authenticate(request, user=test_user)
@@ -80,7 +81,8 @@ class UserTestCase(TestCase):
         request = factory.post('/invoices/', {
             'user': test_user.id,
             'pay_to': address2.id,
-            'invoice_amount': 2000000000
+            'invoice_amount': 2000000000,
+            'currency': PaymentCurrency.ETH().id,
         })
         
         force_authenticate(request, user=test_user)

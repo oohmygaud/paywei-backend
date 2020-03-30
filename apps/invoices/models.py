@@ -74,7 +74,7 @@ class Invoice(model_base.TitledBase):
         super(Invoice, self).save(*args, **kwargs)
 
     def _update_paid_amount(self, save=True):
-        self.paid_amount = sum([p.amount for p in self.payments.filter(status='confirmed')])
+        self.paid_amount = sum([p.converted_amount for p in self.payments.filter(status='confirmed')])
         if self.paid_amount > 0 and self.status == 'agreed':
             self.status = 'partial_payment'
         if self.paid_amount == self.invoice_amount and self.status in ['agreed', 'partial_payment']:
@@ -114,7 +114,8 @@ class Payment(model_base.RandomPKBase):
     invoice = models.ForeignKey(Invoice, related_name='payments', on_delete=models.DO_NOTHING)
     amount = models.DecimalField(max_digits=50, decimal_places=0)
     currency = models.ForeignKey('invoices.PaymentCurrency', on_delete=models.DO_NOTHING)
-    usd_eth_price = models.DecimalField(max_digits=20, decimal_places=10)
+    conversion_rate = models.DecimalField(max_digits=20, decimal_places=10)
+    converted_amount = models.DecimalField(max_digits=50, decimal_places=0)
     block_hash = models.TextField()
     block_number = models.PositiveIntegerField()
     created_at = models.DateTimeField()
@@ -147,7 +148,28 @@ class PaymentCurrency(model_base.TitledBase):
     objects = models.Manager()
     contract_address = models.CharField(max_length=50)
     symbol = models.CharField(max_length=64)
-    decimal_places = models.PositiveIntegerField()    
+    decimal_places = models.PositiveIntegerField()
+
+    @classmethod
+    def ETH(cls):
+        return DEFAULT_CURRENCIES['ETH']()
+
+    # SOMEDAY - eth_usd_price is only needed because we cheat on DAI/USD conversion
+    # We'll make a simpler convert_rate(self, currency) that omits this parameter in the future
+    def convert_rate(self, other_currency, eth_usd_price):
+        if self == other_currency: return 1
+
+        elif self.symbol == 'ETH' and other_currency.symbol == 'DAI':
+            return eth_usd_price
+        elif self.symbol == 'DAI' and other_currency.symbol == 'ETH':
+            return 1.0/eth_usd_price
+        else:
+            from django.core.mail import mail_admins
+            mail_admins('Invalid Conversion Rate', '%s/%s'%(self, other_currency))
+            raise Exception('Invalid Conversion Rate')
+
+    def convert_amount(self, other_currency, amount, eth_usd_price):
+        return amount * self.convert_rate(other_currency, eth_usd_price)
 
 def _update_paid_amount(sender, instance, **kwargs):
     instance.invoice._update_paid_amount()
