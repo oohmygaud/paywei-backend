@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 export SERVICE=uwsgi
-export METRIC_ACCESS_KEY_ID=AKIARNKH4B5PSANBJSHL
-export METRIC_SECRET_ACCESS_KEY=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
+export METRIC_ACCESS_KEY_ID=
+export METRIC_SECRET_ACCESS_KEY=
 
 uwsgi --chdir=/app \
     --http 0.0.0.0:8000 \
